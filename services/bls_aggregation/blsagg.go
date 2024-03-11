@@ -210,15 +210,14 @@ func (a *BlsAggregatorService) singleTaskAggregatorGoroutineFunc(
 	for i, quorumNumber := range quorumNumbers {
 		quorumThresholdPercentagesMap[quorumNumber] = quorumThresholdPercentages[i]
 	}
-	operatorsAvsStateDict, err := a.avsRegistryService.GetOperatorsAvsStateAtBlock(context.Background(), quorumNumbers, taskCreatedBlock)
+
+	operatorsAvsStateDict, quorumsAvsStakeDict, err := a.newMethod(quorumNumbers, taskCreatedBlock)
+
 	if err != nil {
 		// TODO: how should we handle such an error?
-		a.logger.Fatal("Aggregator failed to get operators state from avs registry", "err", err)
+		a.logger.Fatal("Aggregator failed to get operators or quorums state from avs registry", "err", err)
 	}
-	quorumsAvsStakeDict, err := a.avsRegistryService.GetQuorumsAvsStateAtBlock(context.Background(), quorumNumbers, taskCreatedBlock)
-	if err != nil {
-		a.logger.Fatal("Aggregator failed to get quorums state from avs registry", "err", err)
-	}
+
 	totalStakePerQuorum := make(map[types.QuorumNum]*big.Int)
 	for quorumNum, quorumAvsState := range quorumsAvsStakeDict {
 		totalStakePerQuorum[quorumNum] = quorumAvsState.TotalStake
@@ -305,6 +304,20 @@ func (a *BlsAggregatorService) singleTaskAggregatorGoroutineFunc(
 		}
 	}
 
+}
+
+func (a *BlsAggregatorService) newMethod(quorumNumbers []uint8, taskCreatedBlock uint32) (map[[32]byte]types.OperatorAvsState, map[uint8]types.QuorumAvsState) {
+	
+	operatorsAvsStateDict, err := a.avsRegistryService.GetOperatorsAvsStateAtBlock(context.Background(), quorumNumbers, taskCreatedBlock)
+	if err != nil {
+
+		a.logger.Fatal("Aggregator failed to get operators state from avs registry", "err", err)
+	}
+	quorumsAvsStakeDict, err := a.avsRegistryService.GetQuorumsAvsStateAtBlock(context.Background(), quorumNumbers, taskCreatedBlock)
+	if err != nil {
+		a.logger.Fatal("Aggregator failed to get quorums state from avs registry", "err", err)
+	}
+	return operatorsAvsStateDict, quorumsAvsStakeDict
 }
 
 // closeTaskGoroutine is run when the goroutine processing taskIndex's task responses ends (for whatever reason)
